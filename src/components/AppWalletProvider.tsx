@@ -14,8 +14,8 @@ export default function AppWalletProvider({
   children: React.ReactNode;
 }) {
   const network = WalletAdapterNetwork.Mainnet;
-  // Fallback to a well-known keyless public permissive RPC (Ankr)
-  const defaultRpc = 'https://rpc.ankr.com/solana';
+  // Fallback to a truly free public node (PublicNode API) without Key / CORS restrictions
+  const defaultRpc = 'https://solana-rpc.publicnode.com';
   const endpoint = useMemo(() => process.env.NEXT_PUBLIC_SOLANA_RPC_URL || defaultRpc, []);
   const wallets = useMemo(() => [], [network]);
 
