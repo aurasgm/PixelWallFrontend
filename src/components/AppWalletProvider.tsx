@@ -14,7 +14,9 @@ export default function AppWalletProvider({
   children: React.ReactNode;
 }) {
   const network = WalletAdapterNetwork.Mainnet;
-  const endpoint = useMemo(() => process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl(network), [network]);
+  // Fallback to a well-known public permissive RPC instead of the default blocked Solana Foundation RPC
+  const defaultRpc = 'https://mainnet.helius-rpc.com/?api-key=11cdd15e-a9b0-4632-bd74-e8471b0596ae';
+  const endpoint = useMemo(() => process.env.NEXT_PUBLIC_SOLANA_RPC_URL || defaultRpc, []);
   const wallets = useMemo(() => [], [network]);
 
   return (
