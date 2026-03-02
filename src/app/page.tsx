@@ -658,7 +658,7 @@ export default function Home() {
           </main>
         )}
 
-        {connected && !isAuthenticated && (
+        {connected && (!isAuthenticated || !publicKey) && (
           <main className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-8 z-50 bg-black/80 backdrop-blur-sm transition-opacity duration-500">
             <div className="space-y-6 text-center pointer-events-auto bg-zinc-900 p-8 rounded-3xl border border-zinc-800 shadow-2xl max-w-sm w-full">
               <div className="flex flex-col items-center gap-2">
@@ -684,7 +684,7 @@ export default function Home() {
           </main>
         )}
 
-        {connected && isAuthenticated && (
+        {connected && isAuthenticated && publicKey && (
           <>
             <div className="absolute inset-0 z-20 pointer-events-none p-4 flex flex-col justify-between">
 

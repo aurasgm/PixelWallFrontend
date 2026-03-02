@@ -18,6 +18,7 @@ interface ViewportProps {
     onImagePlaced?: (data: { x: number; y: number; count: number; pixels: any[]; width?: number; height?: number }) => void;
     onHoverPixel?: (info: { x: number, y: number, color: string, ownerWallet: string, screenX: number, screenY: number, pricePaid: number } | null) => void;
     isStaged?: boolean;
+    connected?: boolean;
 }
 
 interface PixelCanvasProps {
@@ -33,7 +34,7 @@ interface PixelCanvasProps {
 
 const STAGE_OPTIONS = { backgroundColor: 0x18181b, antialias: true };
 
-const ViewportComponent = ({ walletAddress, activeTool, selectedColor, pendingImage, imageScale = 50, chatOpen, highlightPosition, isStaged, onImagePlaced, onHoverPixel }: ViewportProps) => {
+const ViewportComponent = ({ walletAddress, activeTool, selectedColor, pendingImage, imageScale = 50, chatOpen, highlightPosition, isStaged, connected, onImagePlaced, onHoverPixel }: ViewportProps) => {
     const [viewport, setViewport] = useState<Viewport | null>(null);
     const [windowDimensions, setWindowDimensions] = useState({
         width: typeof window !== 'undefined' ? window.innerWidth : 800,
@@ -557,7 +558,11 @@ const ViewportComponent = ({ walletAddress, activeTool, selectedColor, pendingIm
 
                     const currentWallet = walletAddressRef.current;
                     if (!currentWallet) {
-                        toast.error("Please connect your Solana wallet to interact with the canvas.");
+                        if (connected) {
+                            toast.loading("Verifying wallet connection... please try again in a second.", { duration: 2000 });
+                        } else {
+                            toast.error("Please connect your Solana wallet to interact with the canvas.");
+                        }
                         return;
                     }
 
@@ -676,14 +681,14 @@ import { useWallet } from '@solana/wallet-adapter-react';
 
 export default function PixelCanvas({ activeTool, selectedColor, pendingImage, imageScale, chatOpen, highlightPosition, isStaged, onImagePlaced }: PixelCanvasProps) {
     // Next dynamic con {ssr:false} renderiza client-side directamente
-    const { publicKey } = useWallet();
+    const { publicKey, connected } = useWallet();
 
     const walletString = publicKey ? publicKey.toString() : undefined;
     const [hoverInfo, setHoverInfo] = useState<{ x: number, y: number, color: string, ownerWallet: string, screenX: number, screenY: number, pricePaid: number } | null>(null);
 
     return (
         <div className="w-full h-full overflow-hidden absolute inset-0 z-0 select-none">
-            <ViewportComponent walletAddress={walletString} activeTool={activeTool} selectedColor={selectedColor} pendingImage={pendingImage} imageScale={imageScale} chatOpen={chatOpen} highlightPosition={highlightPosition} isStaged={isStaged} onImagePlaced={onImagePlaced} onHoverPixel={setHoverInfo} />
+            <ViewportComponent walletAddress={walletString} connected={connected} activeTool={activeTool} selectedColor={selectedColor} pendingImage={pendingImage} imageScale={imageScale} chatOpen={chatOpen} highlightPosition={highlightPosition} isStaged={isStaged} onImagePlaced={onImagePlaced} onHoverPixel={setHoverInfo} />
 
             {/* Tooltip Inspector */}
             {hoverInfo && activeTool === 'select' && (
