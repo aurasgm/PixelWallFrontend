@@ -356,44 +356,51 @@ const ViewportComponent = ({ walletAddress, activeTool, selectedColor, pendingIm
                     });
                 };
 
-                // Conexión Inteligente con Fallback a Local
-                const primaryUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-                const localUrl = 'http://localhost:3001';
+                // Conexión Inteligente con Fallback (Protección Localhost Heurística)
+                const isLocal = process.env.NODE_ENV === 'development';
+                const primaryUrl = process.env.NEXT_PUBLIC_API_URL;
 
                 const initializeCanvasData = async () => {
                     let activeUrl = primaryUrl;
 
-                    // Ping pre-flight si estamos usando una URL remota
-                    if (primaryUrl !== localUrl) {
+                    if (!primaryUrl && isLocal) {
+                        activeUrl = 'http://localhost:3001';
+                    } else if (!primaryUrl) {
+                        console.error("API URL undefined in Production");
+                        return;
+                    }
+
+                    // Ping pre-flight
+                    if (primaryUrl) {
                         try {
                             const ac = new AbortController();
-                            const tid = setTimeout(() => ac.abort(), 3500);
+                            const tid = setTimeout(() => ac.abort(), 6000);
                             const res = await fetch(`${primaryUrl}/api/pixels`, { method: 'GET', signal: ac.signal });
                             clearTimeout(tid);
                             if (!res.ok && res.status >= 500) throw new Error("Ngrok Server Error");
 
-                            // Ya que hemos hecho el fetch, aprovechamos para dibujar los pixeles
                             const data = await res.json();
                             if (Array.isArray(data)) drawPixels(data);
                         } catch (e) {
-                            console.warn("🔌 [Canvas] Primary URL unreachable, falling back to localhost...");
-                            activeUrl = localUrl;
-                            // Fetch de rescate local
-                            fetch(`${localUrl}/api/pixels`)
-                                .then(res => res.json())
-                                .then(data => { if (Array.isArray(data)) drawPixels(data); })
-                                .catch(err => console.error("Error loading via fallback:", err));
+                            if (isLocal) {
+                                console.warn("🔌 [Canvas] Primary URL unreachable, falling back to localhost...");
+                                activeUrl = 'http://localhost:3001';
+                                fetch(`${activeUrl}/api/pixels`)
+                                    .then(res => res.json())
+                                    .then(data => { if (Array.isArray(data)) drawPixels(data); })
+                                    .catch(err => console.error("Error loading via fallback:", err));
+                            }
                         }
-                    } else {
-                        // Flujo normal Localhost
-                        fetch(`${localUrl}/api/pixels`)
+                    } else if (isLocal) {
+                        // Flujo normal puramente Localhost
+                        fetch(`http://localhost:3001/api/pixels`)
                             .then(res => res.json())
                             .then(data => { if (Array.isArray(data)) drawPixels(data); })
                             .catch(err => console.error("Error loading pixels:", err));
                     }
 
                     // Una vez decidida la URL viva, conectamos el Socket definitive
-                    const socket = io(activeUrl, { reconnectionAttempts: 3 });
+                    const socket = io(activeUrl as string, { reconnectionAttempts: 3 });
 
                     socket.on('pixels_reserved', (reservedPixels: any[]) => {
                         reservedPixels.forEach(p => {

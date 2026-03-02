@@ -52,6 +52,32 @@ export default function Home() {
     '#09090b', // Negro
   ];
 
+  // --- Smart Fetch ---
+  const apiFetch = async (endpoint: string, options?: RequestInit) => {
+    // Si estamos en Netlify/Pro, JAMÁS cargamos la cadena "localhost" para evitar los avisos de Heurística de Seguridad de Navegadores
+    const isLocal = process.env.NODE_ENV === 'development';
+    const primaryUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    // Si no hay URL de prod pero estamos en desarrollo
+    if (!primaryUrl && isLocal) return fetch('http://localhost:3001' + endpoint, options);
+    if (!primaryUrl) throw new Error("API URL undefined in Production");
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(primaryUrl + endpoint, { ...options, signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!res.ok && res.status >= 500) throw new Error("Ngrok 500+ error");
+      return res;
+    } catch (error) {
+      if (isLocal) {
+        console.warn(`🌐 [API] Primary URL ${primaryUrl} failed. Falling back to local debugger...`);
+        return fetch('http://localhost:3001' + endpoint, options);
+      }
+      throw error;
+    }
+  };
+
   // Reset auth state cuando la wallet se desconecta
   useEffect(() => {
     if (!connected) {
@@ -74,7 +100,7 @@ export default function Home() {
 
       const signature = bs58.encode(signatureArray);
 
-      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/verify', {
+      const res = await apiFetch('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -181,7 +207,7 @@ export default function Home() {
     setIsChatLoading(true);
 
     try {
-      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/chat', {
+      const res = await apiFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -225,7 +251,7 @@ export default function Home() {
   const sendMessageToAgentDirect = async (userMsg: string, history: ChatMessage[]) => {
     setIsChatLoading(true);
     try {
-      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/chat', {
+      const res = await apiFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -298,7 +324,7 @@ export default function Home() {
     setChatHistory(fullHistory);
 
     try {
-      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/pixels/reserve', {
+      const res = await apiFetch('/api/pixels/reserve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pixels: data.pixels, walletAddress: publicKey.toString() })
@@ -341,7 +367,7 @@ export default function Home() {
     }
     if (pendingPixels.length > 0 && publicKey) {
       try {
-        await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/pixels/release', {
+        await apiFetch('/api/pixels/release', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ pixels: pendingPixels.map((p: any) => ({ x: p.x, y: p.y })), walletAddress: publicKey.toString() })
@@ -399,7 +425,7 @@ export default function Home() {
 
       // Validamos con el backend de forma asíncrona ANTES de abrir Phantom
       try {
-        const reserveRes = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/pixels/reserve', {
+        const reserveRes = await apiFetch('/api/pixels/reserve', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ pixels: simulatedPixels, walletAddress: publicKey.toString() })
@@ -463,7 +489,7 @@ export default function Home() {
       setChatHistory(prev => [...prev, { role: 'model', parts: [{ text: `📡 **Step 2/3** — Transaction submitted! Waiting for on-chain confirmation...\n\`${signature.substring(0, 12)}...\`` }] }]);
 
       // Step 3: Verifying on backend
-      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/buy', {
+      const res = await apiFetch('/api/buy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
