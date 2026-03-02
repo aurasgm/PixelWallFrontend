@@ -53,7 +53,7 @@ export default function Home() {
   ];
 
   // --- Smart Fetch ---
-  const apiFetch = async (endpoint: string, options?: RequestInit) => {
+  const apiFetch = async (endpoint: string, options?: RequestInit, timeoutMs = 45000) => {
     // Si estamos en Netlify/Pro, JAMÁS cargamos la cadena "localhost" para evitar los avisos de Heurística de Seguridad de Navegadores
     const isLocal = process.env.NODE_ENV === 'development';
     const primaryUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -64,7 +64,7 @@ export default function Home() {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       const res = await fetch(primaryUrl + endpoint, { ...options, signal: controller.signal });
       clearTimeout(timeoutId);
       if (!res.ok && res.status >= 500) throw new Error("Ngrok 500+ error");

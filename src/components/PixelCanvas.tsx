@@ -375,7 +375,7 @@ const ViewportComponent = ({ walletAddress, activeTool, selectedColor, pendingIm
                     if (primaryUrl) {
                         try {
                             const ac = new AbortController();
-                            const tid = setTimeout(() => ac.abort(), 6000);
+                            const tid = setTimeout(() => ac.abort(), 20000);
                             const res = await fetch(`${primaryUrl}/api/pixels`, { method: 'GET', signal: ac.signal });
                             clearTimeout(tid);
                             if (!res.ok && res.status >= 500) throw new Error("Ngrok Server Error");
