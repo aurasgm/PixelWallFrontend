@@ -387,7 +387,7 @@ const ViewportComponent = ({ walletAddress, activeTool, selectedColor, pendingIm
                 });
 
                 // Fetch inicial
-                fetch('http://localhost:3001/api/pixels')
+                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/pixels')
                     .then(res => res.json())
                     .then(data => {
                         if (Array.isArray(data)) drawPixels(data);

@@ -74,7 +74,7 @@ export default function Home() {
 
       const signature = bs58.encode(signatureArray);
 
-      const res = await fetch('http://localhost:3001/api/auth/verify', {
+      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -181,7 +181,7 @@ export default function Home() {
     setIsChatLoading(true);
 
     try {
-      const res = await fetch('http://localhost:3001/api/chat', {
+      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -225,7 +225,7 @@ export default function Home() {
   const sendMessageToAgentDirect = async (userMsg: string, history: ChatMessage[]) => {
     setIsChatLoading(true);
     try {
-      const res = await fetch('http://localhost:3001/api/chat', {
+      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -298,7 +298,7 @@ export default function Home() {
     setChatHistory(fullHistory);
 
     try {
-      const res = await fetch('http://localhost:3001/api/pixels/reserve', {
+      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/pixels/reserve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pixels: data.pixels, walletAddress: publicKey.toString() })
@@ -341,7 +341,7 @@ export default function Home() {
     }
     if (pendingPixels.length > 0 && publicKey) {
       try {
-        await fetch('http://localhost:3001/api/pixels/release', {
+        await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/pixels/release', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ pixels: pendingPixels.map((p: any) => ({ x: p.x, y: p.y })), walletAddress: publicKey.toString() })
@@ -399,7 +399,7 @@ export default function Home() {
 
       // Validamos con el backend de forma asíncrona ANTES de abrir Phantom
       try {
-        const reserveRes = await fetch('http://localhost:3001/api/pixels/reserve', {
+        const reserveRes = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/pixels/reserve', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ pixels: simulatedPixels, walletAddress: publicKey.toString() })
@@ -463,7 +463,7 @@ export default function Home() {
       setChatHistory(prev => [...prev, { role: 'model', parts: [{ text: `📡 **Step 2/3** — Transaction submitted! Waiting for on-chain confirmation...\n\`${signature.substring(0, 12)}...\`` }] }]);
 
       // Step 3: Verifying on backend
-      const res = await fetch('http://localhost:3001/api/buy', {
+      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/buy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
