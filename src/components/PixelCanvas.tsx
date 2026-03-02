@@ -356,43 +356,73 @@ const ViewportComponent = ({ walletAddress, activeTool, selectedColor, pendingIm
                     });
                 };
 
-                // Websocket Initialization
-                const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
-                socket.on('pixels_reserved', (reservedPixels: any[]) => {
-                    reservedPixels.forEach(p => {
-                        loadedPixelsRef.current.set(`${p.x}_${p.y}`, { ...loadedPixelsRef.current.get(`${p.x}_${p.y}`), ...p, reservedBy: p.reservedBy, reservedUntil: p.reservedUntil });
-                    });
-                    drawPixels(Array.from(loadedPixelsRef.current.values()));
-                });
+                // Conexión Inteligente con Fallback a Local
+                const primaryUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                const localUrl = 'http://localhost:3001';
 
-                socket.on('pixels_freed', (freedPixels: any[]) => {
-                    freedPixels.forEach(p => {
-                        const existing = loadedPixelsRef.current.get(`${p.x}_${p.y}`);
-                        if (existing) {
-                            existing.reservedBy = null;
-                            existing.reservedUntil = null;
-                            // Si nunca fue comprado (owner temporal sin pricePaid), lo ideal sería borrarlo
-                            if (!existing.pricePaid) loadedPixelsRef.current.delete(`${p.x}_${p.y}`);
+                const initializeCanvasData = async () => {
+                    let activeUrl = primaryUrl;
+
+                    // Ping pre-flight si estamos usando una URL remota
+                    if (primaryUrl !== localUrl) {
+                        try {
+                            const ac = new AbortController();
+                            const tid = setTimeout(() => ac.abort(), 3500);
+                            const res = await fetch(`${primaryUrl}/api/pixels`, { method: 'GET', signal: ac.signal });
+                            clearTimeout(tid);
+                            if (!res.ok && res.status >= 500) throw new Error("Ngrok Server Error");
+
+                            // Ya que hemos hecho el fetch, aprovechamos para dibujar los pixeles
+                            const data = await res.json();
+                            if (Array.isArray(data)) drawPixels(data);
+                        } catch (e) {
+                            console.warn("🔌 [Canvas] Primary URL unreachable, falling back to localhost...");
+                            activeUrl = localUrl;
+                            // Fetch de rescate local
+                            fetch(`${localUrl}/api/pixels`)
+                                .then(res => res.json())
+                                .then(data => { if (Array.isArray(data)) drawPixels(data); })
+                                .catch(err => console.error("Error loading via fallback:", err));
                         }
-                    });
-                    drawPixels(Array.from(loadedPixelsRef.current.values()));
-                });
+                    } else {
+                        // Flujo normal Localhost
+                        fetch(`${localUrl}/api/pixels`)
+                            .then(res => res.json())
+                            .then(data => { if (Array.isArray(data)) drawPixels(data); })
+                            .catch(err => console.error("Error loading pixels:", err));
+                    }
 
-                socket.on('pixels_bought', (boughtPixels: any[]) => {
-                    boughtPixels.forEach(p => {
-                        loadedPixelsRef.current.set(`${p.x}_${p.y}`, { ...loadedPixelsRef.current.get(`${p.x}_${p.y}`), ...p, reservedBy: null, reservedUntil: null });
-                    });
-                    // Forced render with new native colors and permanent ownership
-                    drawPixels(Array.from(loadedPixelsRef.current.values()));
-                });
+                    // Una vez decidida la URL viva, conectamos el Socket definitive
+                    const socket = io(activeUrl, { reconnectionAttempts: 3 });
 
-                // Fetch inicial
-                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/pixels')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (Array.isArray(data)) drawPixels(data);
-                    })
-                    .catch(e => console.error("Error loading pixels:", e));
+                    socket.on('pixels_reserved', (reservedPixels: any[]) => {
+                        reservedPixels.forEach(p => {
+                            loadedPixelsRef.current.set(`${p.x}_${p.y}`, { ...loadedPixelsRef.current.get(`${p.x}_${p.y}`), ...p, reservedBy: p.reservedBy, reservedUntil: p.reservedUntil });
+                        });
+                        drawPixels(Array.from(loadedPixelsRef.current.values()));
+                    });
+
+                    socket.on('pixels_freed', (freedPixels: any[]) => {
+                        freedPixels.forEach(p => {
+                            const existing = loadedPixelsRef.current.get(`${p.x}_${p.y}`);
+                            if (existing) {
+                                existing.reservedBy = null;
+                                existing.reservedUntil = null;
+                                if (!existing.pricePaid) loadedPixelsRef.current.delete(`${p.x}_${p.y}`);
+                            }
+                        });
+                        drawPixels(Array.from(loadedPixelsRef.current.values()));
+                    });
+
+                    socket.on('pixels_bought', (boughtPixels: any[]) => {
+                        boughtPixels.forEach(p => {
+                            loadedPixelsRef.current.set(`${p.x}_${p.y}`, { ...loadedPixelsRef.current.get(`${p.x}_${p.y}`), ...p, reservedBy: null, reservedUntil: null });
+                        });
+                        drawPixels(Array.from(loadedPixelsRef.current.values()));
+                    });
+                };
+
+                initializeCanvasData();
 
                 // Escucha de Mouse Hover para actualizar la Ghost Image y el Inpsector Tooltip
                 // @ts-ignore
